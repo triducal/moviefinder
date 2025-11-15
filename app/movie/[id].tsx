@@ -1,7 +1,6 @@
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
-import { supabase } from "@/utils/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -12,7 +11,6 @@ import {
   Linking,
   ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   useColorScheme,
   View,
@@ -30,9 +28,8 @@ export default function MoviePage() {
 
   const [movie, setMovie] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
-  const [rating, setRating] = useState(0);
-  const [reviewText, setReviewText] = useState("");
 
+  // Fetch movie details
   useEffect(() => {
     (async () => {
       try {
@@ -47,14 +44,18 @@ export default function MoviePage() {
     })();
   }, [id]);
 
+  // Fetch reviews from TMDB
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("*, profiles(username)")
-        .eq("movie_id", id)
-        .order("created_at", { ascending: false });
-      if (!error) setReviews(data || []);
+      try {
+        const res = await fetch(
+          `${TMDB_BASE_URL}/movie/${id}/reviews?api_key=${TMDB_API_KEY}`
+        );
+        const json = await res.json();
+        setReviews(json.results || []);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+      }
     })();
   }, [id]);
 
@@ -65,29 +66,6 @@ export default function MoviePage() {
     if (trailer)
       Linking.openURL(`https://www.youtube.com/watch?v=${trailer.key}`);
     else Alert.alert("No Trailer Found");
-  };
-
-  const handleAddReview = async () => {
-    const { data: user } = await supabase.auth.getUser();
-    if (!user?.user) return Alert.alert("You must be signed in to review.");
-
-    const { error } = await supabase.from("reviews").upsert({
-      user_id: user.user.id,
-      movie_id: Number(id),
-      rating,
-      review_text: reviewText.trim(),
-    });
-
-    if (error) return Alert.alert("Error", error.message);
-
-    setReviewText("");
-    setRating(0);
-    const { data } = await supabase
-      .from("reviews")
-      .select("*, profiles(username)")
-      .eq("movie_id", id)
-      .order("created_at", { ascending: false });
-    setReviews(data || []);
   };
 
   if (!movie) {
@@ -144,7 +122,7 @@ export default function MoviePage() {
             style={styles.poster}
           />
           <LinearGradient
-            colors={["rgba(0,0,0,0.4)", "rgba(0,0,0,0.6)"]}
+            colors={["rgba(0,0,0,0.3)", "rgba(0,0,0,0.6)"]}
             style={styles.posterOverlay}
           />
           <TouchableOpacity
@@ -210,6 +188,9 @@ export default function MoviePage() {
               styles.addButton,
               { backgroundColor: theme.backgroundTertiary },
             ]}
+            onPress={() =>
+              Alert.alert("Coming Soon", "Lists not implemented yet")
+            }
           >
             <Ionicons name="add" size={18} color={theme.text} />
             <ThemedText style={[styles.addButtonText, { color: theme.text }]}>
@@ -246,56 +227,17 @@ export default function MoviePage() {
             <ThemedText style={{ color: theme.text }}>{topCast}</ThemedText>
           </ThemedText>
 
-          {/* Leave a Review */}
+          {/* Reviews from TMDB */}
           <ThemedText
             type="subtitle"
             style={[styles.sectionTitle, { color: theme.text }]}
           >
-            Leave a Review
-          </ThemedText>
-          <View style={styles.ratingStars}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <TouchableOpacity key={star} onPress={() => setRating(star)}>
-                <Ionicons
-                  name={star <= rating ? "star" : "star-outline"}
-                  size={24}
-                  color={theme.ratingStar}
-                />
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TextInput
-            placeholder="Share your thoughts..."
-            placeholderTextColor={theme.textMuted}
-            value={reviewText}
-            onChangeText={setReviewText}
-            style={[
-              styles.input,
-              { color: theme.text, backgroundColor: theme.backgroundTertiary },
-            ]}
-            multiline
-          />
-
-          <TouchableOpacity
-            style={[styles.sendButton, { backgroundColor: theme.brandPrimary }]}
-            onPress={handleAddReview}
-          >
-            <Ionicons name="send" size={16} color="#fff" />
-            <ThemedText style={styles.sendButtonText}>Send Review</ThemedText>
-          </TouchableOpacity>
-
-          {/* User Reviews */}
-          <ThemedText
-            type="subtitle"
-            style={[styles.sectionTitle, { color: theme.text }]}
-          >
-            User Reviews ({reviews.length})
+            Reviews ({reviews.length})
           </ThemedText>
 
           {reviews.length === 0 ? (
             <ThemedText style={[styles.metaText, { color: theme.textMuted }]}>
-              No reviews yet.
+              No reviews available.
             </ThemedText>
           ) : (
             reviews.map((r) => (
@@ -312,24 +254,31 @@ export default function MoviePage() {
                     <ThemedText
                       style={{ color: theme.text, fontWeight: "600" }}
                     >
-                      {r.profiles?.username || "Anonymous"}
+                      {r.author || "Anonymous"}
                     </ThemedText>
-                    <View style={{ flexDirection: "row", marginTop: 2 }}>
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <Ionicons
-                          key={s}
-                          name={s <= r.rating ? "star" : "star-outline"}
-                          size={12}
-                          color={theme.ratingStar}
-                        />
-                      ))}
-                    </View>
+                    {r.author_details?.rating ? (
+                      <View style={{ flexDirection: "row", marginTop: 2 }}>
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Ionicons
+                            key={s}
+                            name={
+                              s <= Math.round(r.author_details.rating / 2)
+                                ? "star"
+                                : "star-outline"
+                            }
+                            size={12}
+                            color={theme.ratingStar}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
                   </View>
                 </View>
                 <ThemedText
                   style={[styles.reviewText, { color: theme.textMuted }]}
+                  numberOfLines={5}
                 >
-                  {r.review_text}
+                  {r.content}
                 </ThemedText>
               </View>
             ))
@@ -394,17 +343,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   description: { fontSize: 14, lineHeight: 20 },
-  ratingStars: { flexDirection: "row", gap: 8, marginBottom: 8 },
-  input: { borderRadius: 8, padding: 10, marginBottom: 8 },
-  sendButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  sendButtonText: { color: "#fff", fontWeight: "600", marginLeft: 6 },
   reviewCard: { padding: 12, borderRadius: 10, marginTop: 10 },
   reviewHeader: {
     flexDirection: "row",
