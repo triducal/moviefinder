@@ -2,78 +2,130 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   StyleSheet,
-  View,
   useColorScheme,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+const TMDB_API_KEY = process.env.EXPO_PUBLIC_TMDB_API_KEY;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
 const SECTIONS = [
-  { title: "Trending Now" },
-  { title: "Top Rated" },
-  { title: "Recently Added" },
+  { title: "Trending Now", endpoint: "trending/movie/day" },
+  { title: "Top Rated", endpoint: "movie/top_rated" },
+  { title: "Now Playing", endpoint: "movie/now_playing" },
+  { title: "Upcoming", endpoint: "movie/upcoming" },
 ];
 
-const movies = Array.from({ length: 6 }).map((_, i) => ({
-  id: i.toString(),
-  title: "Movie Title",
-  rating: "4.4",
-  image: "https://via.placeholder.com/100x150.png?text=Poster",
-}));
+interface Movie {
+  id: number;
+  title: string;
+  vote_average: number;
+  poster_path: string | null;
+}
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme ?? "dark"];
+
+  const [sections, setSections] = useState<Record<string, Movie[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data: Record<string, Movie[]> = {};
+        for (const section of SECTIONS) {
+          const res = await fetch(
+            `${TMDB_BASE_URL}/${section.endpoint}?api_key=${TMDB_API_KEY}`
+          );
+          const json = await res.json();
+          data[section.title] = json.results.slice(0, 10);
+        }
+        setSections(data);
+      } catch (error) {
+        console.error("Error fetching movies:", error);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[styles.safeArea, { backgroundColor: theme.backgroundPrimary }]}
+      >
+        <ThemedView style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.brandPrimary} />
+        </ThemedView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.backgroundPrimary }]}
     >
       <ThemedView style={styles.container}>
-        {SECTIONS.map((section) => (
-          <ThemedView key={section.title} style={styles.section}>
-            <ThemedText
-              type="subtitle"
-              style={[styles.sectionTitle, { color: theme.text }]}
-            >
-              {section.title}
-            </ThemedText>
+        {SECTIONS.map((section) => {
+          const movies = sections[section.title] || [];
+          return (
+            <ThemedView key={section.title} style={styles.section}>
+              <ThemedText
+                type="subtitle"
+                style={[styles.sectionTitle, { color: theme.text }]}
+              >
+                {section.title}
+              </ThemedText>
 
-            <FlatList
-              horizontal
-              data={movies}
-              keyExtractor={(item) => item.id}
-              showsHorizontalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <View style={styles.movieCard}>
-                  <Image
-                    source={{ uri: item.image }}
-                    style={[
-                      styles.poster,
-                      { backgroundColor: theme.backgroundTertiary },
-                    ]}
-                  />
-                  <ThemedText
-                    style={[styles.movieTitle, { color: theme.text }]}
-                  >
-                    {item.title}
-                  </ThemedText>
-                  <View style={styles.ratingRow}>
-                    <Ionicons name="star" size={14} color={theme.ratingStar} />
+              <FlatList
+                horizontal
+                data={movies}
+                keyExtractor={(item) => item.id.toString()}
+                showsHorizontalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <View style={styles.movieCard}>
+                    <Image
+                      source={{
+                        uri: item.poster_path
+                          ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                          : "https://via.placeholder.com/100x150.png?text=No+Image",
+                      }}
+                      style={[
+                        styles.poster,
+                        { backgroundColor: theme.backgroundTertiary },
+                      ]}
+                    />
                     <ThemedText
-                      style={[styles.ratingText, { color: theme.textMuted }]}
+                      style={[styles.movieTitle, { color: theme.text }]}
                     >
-                      {item.rating}
+                      {item.title}
                     </ThemedText>
+                    <View style={styles.ratingRow}>
+                      <Ionicons
+                        name="star"
+                        size={14}
+                        color={theme.ratingStar}
+                      />
+                      <ThemedText
+                        style={[styles.ratingText, { color: theme.textMuted }]}
+                      >
+                        {item.vote_average?.toFixed(1) ?? "N/A"}
+                      </ThemedText>
+                    </View>
                   </View>
-                </View>
-              )}
-            />
-          </ThemedView>
-        ))}
+                )}
+              />
+            </ThemedView>
+          );
+        })}
       </ThemedView>
     </SafeAreaView>
   );
@@ -82,6 +134,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   container: {
     flex: 1,
