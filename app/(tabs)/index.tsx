@@ -2,12 +2,14 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { Link } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Image,
   StyleSheet,
+  TouchableOpacity,
   useColorScheme,
   View,
 } from "react-native";
@@ -91,36 +93,48 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id.toString()}
                 showsHorizontalScrollIndicator={false}
                 renderItem={({ item }) => (
-                  <View style={styles.movieCard}>
-                    <Image
-                      source={{
-                        uri: item.poster_path
-                          ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
-                          : "https://via.placeholder.com/100x150.png?text=No+Image",
-                      }}
-                      style={[
-                        styles.poster,
-                        { backgroundColor: theme.backgroundTertiary },
-                      ]}
-                    />
-                    <ThemedText
-                      style={[styles.movieTitle, { color: theme.text }]}
-                    >
-                      {item.title}
-                    </ThemedText>
-                    <View style={styles.ratingRow}>
-                      <Ionicons
-                        name="star"
-                        size={14}
-                        color={theme.ratingStar}
+                  <Link
+                    href={{
+                      pathname: `/movie/[id]`,
+                      params: { id: item.id.toString() },
+                    }}
+                    asChild
+                  >
+                    <TouchableOpacity style={styles.movieCard}>
+                      <Image
+                        source={{
+                          uri: item.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${item.poster_path}`
+                            : "https://via.placeholder.com/100x150.png?text=No+Image",
+                        }}
+                        style={[
+                          styles.poster,
+                          { backgroundColor: theme.backgroundTertiary },
+                        ]}
                       />
                       <ThemedText
-                        style={[styles.ratingText, { color: theme.textMuted }]}
+                        style={[styles.movieTitle, { color: theme.text }]}
+                        numberOfLines={1}
                       >
-                        {item.vote_average?.toFixed(1) ?? "N/A"}
+                        {item.title}
                       </ThemedText>
-                    </View>
-                  </View>
+                      <View style={styles.ratingRow}>
+                        <Ionicons
+                          name="star"
+                          size={14}
+                          color={theme.ratingStar}
+                        />
+                        <ThemedText
+                          style={[
+                            styles.ratingText,
+                            { color: theme.textMuted },
+                          ]}
+                        >
+                          {item.vote_average?.toFixed(1) ?? "N/A"}
+                        </ThemedText>
+                      </View>
+                    </TouchableOpacity>
+                  </Link>
                 )}
               />
             </ThemedView>
