@@ -1,65 +1,121 @@
-import { StyleSheet } from 'react-native';
-import { Link } from 'expo-router';
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { Colors } from "@/constants/theme";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  View,
+  useColorScheme,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { useAuth } from '@/providers/AuthProvider';
+const SECTIONS = [
+  { title: "Trending Now" },
+  { title: "Top Rated" },
+  { title: "Recently Added" },
+];
+
+const movies = Array.from({ length: 6 }).map((_, i) => ({
+  id: i.toString(),
+  title: "Movie Title",
+  rating: "4.4",
+  image: "https://via.placeholder.com/100x150.png?text=Poster",
+}));
 
 export default function HomeScreen() {
-  const { user } = useAuth();
-  const firstLine = user?.email?.split('@')[0];
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? "dark"];
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#6ab9ff', dark: '#0f172a' }}
-      headerImage={
-        <ThemedView style={styles.header}>
-          <ThemedText type="title" style={styles.headerTitle}>
-            Home
-          </ThemedText>
-        </ThemedView>
-      }>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.backgroundPrimary }]}
+    >
       <ThemedView style={styles.container}>
-        <ThemedText type="title">Hello {firstLine ?? 'there'} 👋</ThemedText>
-        <ThemedText style={styles.subtitle}>
-          Welcome to your Supabase powered starter project. Use the tabs below to explore the
-          different screens that are ready for you.
-        </ThemedText>
-        <ThemedView style={styles.card}>
-          <ThemedText type="subtitle">Get started</ThemedText>
-          <ThemedText>
-            Visit the <Link href="/(tabs)/ask-ai">Ask AI</Link> tab to prototype your assistant
-            experience or head to your <Link href="/(tabs)/profile">Profile</Link> to manage your
-            account.
-          </ThemedText>
-        </ThemedView>
+        {SECTIONS.map((section) => (
+          <ThemedView key={section.title} style={styles.section}>
+            <ThemedText
+              type="subtitle"
+              style={[styles.sectionTitle, { color: theme.text }]}
+            >
+              {section.title}
+            </ThemedText>
+
+            <FlatList
+              horizontal
+              data={movies}
+              keyExtractor={(item) => item.id}
+              showsHorizontalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View style={styles.movieCard}>
+                  <Image
+                    source={{ uri: item.image }}
+                    style={[
+                      styles.poster,
+                      { backgroundColor: theme.backgroundTertiary },
+                    ]}
+                  />
+                  <ThemedText
+                    style={[styles.movieTitle, { color: theme.text }]}
+                  >
+                    {item.title}
+                  </ThemedText>
+                  <View style={styles.ratingRow}>
+                    <Ionicons name="star" size={14} color={theme.ratingStar} />
+                    <ThemedText
+                      style={[styles.ratingText, { color: theme.textMuted }]}
+                    >
+                      {item.rating}
+                    </ThemedText>
+                  </View>
+                </View>
+              )}
+            />
+          </ThemedView>
+        ))}
       </ThemedView>
-    </ParallaxScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  safeArea: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 32,
-  },
-  headerTitle: {
-    fontSize: 36,
   },
   container: {
-    gap: 16,
-    padding: 20,
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
   },
-  subtitle: {
-    lineHeight: 22,
+  section: {
+    marginBottom: 24,
   },
-  card: {
-    gap: 8,
-    padding: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+  sectionTitle: {
+    fontWeight: "600",
+    fontSize: 18,
+    marginBottom: 8,
+  },
+  movieCard: {
+    marginRight: 12,
+    width: 100,
+  },
+  poster: {
+    width: 100,
+    height: 150,
+    borderRadius: 10,
+  },
+  movieTitle: {
+    marginTop: 6,
+    fontSize: 12,
+  },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  ratingText: {
+    marginLeft: 4,
+    fontSize: 12,
   },
 });
