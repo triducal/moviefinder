@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
@@ -20,9 +21,15 @@ const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 const SECTIONS = [
   { title: "Trending Now", endpoint: "trending/movie/day" },
+  { title: "Popular", endpoint: "movie/popular" },
   { title: "Top Rated", endpoint: "movie/top_rated" },
-  { title: "Now Playing", endpoint: "movie/now_playing" },
-  { title: "Upcoming", endpoint: "movie/upcoming" },
+  { title: "Now Playing in Theaters", endpoint: "movie/now_playing" },
+  { title: "Upcoming Releases", endpoint: "movie/upcoming" },
+  { title: "Action Picks", endpoint: "discover/movie?with_genres=28" },
+  { title: "Comedy Picks", endpoint: "discover/movie?with_genres=35" },
+  { title: "Horror Spotlight", endpoint: "discover/movie?with_genres=27" },
+  { title: "Family Favorites", endpoint: "discover/movie?with_genres=10751" },
+  { title: "Drama Highlights", endpoint: "discover/movie?with_genres=18" },
 ];
 
 interface Movie {
@@ -43,13 +50,17 @@ export default function HomeScreen() {
     (async () => {
       try {
         const data: Record<string, Movie[]> = {};
+
         for (const section of SECTIONS) {
-          const res = await fetch(
-            `${TMDB_BASE_URL}/${section.endpoint}?api_key=${TMDB_API_KEY}`
-          );
+          const endpoint = section.endpoint.includes("?")
+            ? `${TMDB_BASE_URL}/${section.endpoint}&api_key=${TMDB_API_KEY}`
+            : `${TMDB_BASE_URL}/${section.endpoint}?api_key=${TMDB_API_KEY}`;
+
+          const res = await fetch(endpoint);
           const json = await res.json();
-          data[section.title] = json.results.slice(0, 10);
+          data[section.title] = json.results?.slice(0, 10) || [];
         }
+
         setSections(data);
       } catch (error) {
         console.error("Error fetching movies:", error);
@@ -75,7 +86,10 @@ export default function HomeScreen() {
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: theme.backgroundPrimary }]}
     >
-      <ThemedView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {SECTIONS.map((section) => {
           const movies = sections[section.title] || [];
           return (
@@ -112,12 +126,14 @@ export default function HomeScreen() {
                           { backgroundColor: theme.backgroundTertiary },
                         ]}
                       />
+
                       <ThemedText
                         style={[styles.movieTitle, { color: theme.text }]}
                         numberOfLines={1}
                       >
                         {item.title}
                       </ThemedText>
+
                       <View style={styles.ratingRow}>
                         <Ionicons
                           name="star"
@@ -140,51 +156,61 @@ export default function HomeScreen() {
             </ThemedView>
           );
         })}
-      </ThemedView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
+/* ============== STYLES ============== */
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
+  safeArea: { flex: 1 },
+
+  scrollContent: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  container: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-  },
+
   section: {
-    marginBottom: 24,
+    marginBottom: 32,
   },
+
   sectionTitle: {
-    fontWeight: "600",
-    fontSize: 18,
-    marginBottom: 8,
+    fontWeight: "700",
+    fontSize: 20,
+    marginBottom: 12,
   },
+
   movieCard: {
-    marginRight: 12,
-    width: 100,
+    marginRight: 14,
+    width: 110,
   },
+
   poster: {
-    width: 100,
-    height: 150,
-    borderRadius: 10,
+    width: 110,
+    height: 165,
+    borderRadius: 12,
   },
+
   movieTitle: {
     marginTop: 6,
     fontSize: 12,
+    fontWeight: "500",
   },
+
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 2,
   },
+
   ratingText: {
     marginLeft: 4,
     fontSize: 12,
