@@ -55,12 +55,12 @@ export default function LoginScreen() {
 
         {/* Username */}
         <ThemedText style={[styles.label, { color: theme.textMuted }]}>
-          Username
+          Email
         </ThemedText>
         <TextInput
           value={email}
           onChangeText={setEmail}
-          placeholder="Enter username"
+          placeholder="Enter email"
           placeholderTextColor={theme.textMuted}
           style={[
             styles.input,
